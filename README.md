@@ -42,3 +42,11 @@ Access to a computer with a GPU will help run the code quickly. There are compan
 
 ### Suggestions and Feedback
 [Click here](https://docs.google.com/forms/d/e/1FAIpQLSe5qwunkGf6PUvzPirPDtuy1Du5Rlzew23UBp2S-P3wB-GcwQ/viewform) if you have any feedback or suggestions.
+
+### C++ version
+```
+mkdir build
+cd build
+ccmake  -DCMAKE_PREFIX_PATH=/path/to/libtorch ../
+make
+```
