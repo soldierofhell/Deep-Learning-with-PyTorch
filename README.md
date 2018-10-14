@@ -44,6 +44,7 @@ Access to a computer with a GPU will help run the code quickly. There are compan
 [Click here](https://docs.google.com/forms/d/e/1FAIpQLSe5qwunkGf6PUvzPirPDtuy1Du5Rlzew23UBp2S-P3wB-GcwQ/viewform) if you have any feedback or suggestions.
 
 ### C++ version
+The C++ API for Pytorch can be installed as described [here](https://pytorch.org/cppdocs/installing.html). To build the code for the different chapters, the following procedure can be used:
 ```
 mkdir build
 cd build
