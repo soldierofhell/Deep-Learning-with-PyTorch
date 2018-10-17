@@ -45,3 +45,39 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Notebook modified by jupyter and markdown exports
+Chapter02/.ipynb_checkpoints/
+Chapter02/2._Building_Blocks_Of_Neural_Networks.md
+Chapter03/.ipynb_checkpoints/
+Chapter03/3. Diving_deep_into_Neural_Networks.md
+Chapter03/Image Classification Dogs and Cats.md
+Chapter03/Image Classification Dogs and Cats_files/
+Chapter04/.ipynb_checkpoints/
+Chapter04/Playing_with_model_complexity_and_regularising_models.md
+Chapter05/ImageClassificationDogsandCats.md
+Chapter05/ImageClassificationDogsandCats_files/
+Chapter05/Understanding Convolutions and building an MNIST image classifier.md
+Chapter05/Understanding Convolutions and building an MNIST image classifier_files/
+Chapter06/IMDB LSTM with batching.md
+Chapter06/IMDB with 1d Convolutions.md
+Chapter06/IMDB with and without pretrained Embeddings.md
+Chapter07/GAN/DCGAN.md
+Chapter07/GAN/DCGAN_files/
+Chapter07/LanguageModeling/LanguageModeling using torchtext.md
+Chapter07/StyleTransfer/Style transfer.md
+Chapter07/StyleTransfer/Style transfer_files/
+Chapter08/Creating basic resnet and inception blocks.md
+Chapter08/DogsAndCatsUsingInception.md
+Chapter08/DogsAndCatsUsingInception_files/
+Chapter08/DogsandCatsUsingDenseNet.md
+Chapter08/DogsandCatsUsingDenseNet_files/
+Chapter08/DogsandCatsUsingResnet.md
+Chapter08/DogsandCatsUsingResnet_files/
+Chapter08/ensembles/Ensemble_Dogs_and_cats.md
+Chapter08/ensembles/Ensemble_Dogs_and_cats_files/
+
+# Local files for building and lsp mode
+.projectile
+build/
+compile_commands.json
