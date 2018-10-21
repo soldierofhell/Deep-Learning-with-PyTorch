@@ -11,6 +11,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 namespace fs = std::filesystem;
 
@@ -73,7 +75,6 @@ get_available_files_and_make_dirs(const std::string& image_path)
         std::cout << new_folder << " exists; removing\n";
         fs::remove_all(new_folder);
       }
-      std::cout << new_folder << '\n';
       fs::create_directories(new_folder);
     }
   return files;
@@ -91,9 +92,30 @@ void generate_samples(const std::vector<std::string> files, int first,
     auto f_name = tokens[tokens.size()-1];
     auto cat_or_dog = std::string(string_split(f_name,".")[0]);
     auto new_name = image_path+"/"+subfolder+"/"+cat_or_dog+"/"+f_name;
-    std::cout << f << "->" << new_name <<'\n';
     fs::copy(f, new_name);
   }
+}
+
+void show_image(const std::string& im_fn)
+{
+  cv::Mat image;
+  image = cv::imread(im_fn, CV_LOAD_IMAGE_COLOR);
+
+  if(! image.data )                
+  {
+    throw("Could not open or find the image\n");
+    
+  }
+  cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
+  cv::imshow( "Display window", image ); 
+  cv::waitKey(0);                                  
+  return;
+}
+
+void clean_samples(const std::string& image_path)
+{
+  fs::remove_all(image_path+"/train");
+  fs::remove_all(image_path+"/valid");
 }
 
 int main()
@@ -105,6 +127,11 @@ int main()
   const auto validation_samples = 20;
   generate_samples(files, training_samples, 
                    training_samples+validation_samples, "valid");
+
+  show_image(files[0]);
+
+  clean_samples(image_path);
+  return 0;
 
 }
 
