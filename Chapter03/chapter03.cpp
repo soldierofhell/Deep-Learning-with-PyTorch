@@ -56,13 +56,19 @@ int main()
   auto output = torch::mse_loss(input, target);
   output.backward();
   std::cout << output << '\n';
-  auto input2 = torch::randn({3, 5}, torch::requires_grad(true));
-  auto target2 = torch::tensor({3},torch::kLong).random_(5);
-  auto output2 = torch::binary_cross_entropy(input2, target2);
-  // output2.backward();
-  // std::cout << output << '\n';
 
-// torch::log_softmax 
-// torch::nll_loss
+  // https://discuss.pytorch.org/t/c-loss-functions/27471/6
+  /* In the C++ API we don’t have a cross_entropy_loss per se, but as @ptrblck
+   * mentioned, nn.CrossEntropyLoss()(input, target) is the same as
+   * cross_entropy(input, target), which per
+   * https://github.com/pytorch/pytorch/blob/master/torch/nn/functional.py#L1671
+   * 1 is the same as nll_loss(log_softmax(input, 1), target), so your
+   * code in C++ would be something like*/
+
+  auto input2 = torch::randn({3, 5}, torch::requires_grad(true));
+  auto target2 = torch::empty(3, torch::kLong).random_(5);
+  auto output2 = torch::nll_loss(torch::log_softmax(input2, /*dim=*/1), target2);
+  output2.backward();
+  std::cout << output2 << '\n';
 
 }
