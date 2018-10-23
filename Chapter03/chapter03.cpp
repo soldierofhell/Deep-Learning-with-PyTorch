@@ -33,9 +33,16 @@ struct MyFirstNetwork : torch::nn::Module
     layer1(register_module("layer1", Linear(input_size, hidden_size))),
   layer2(register_module("layer2", Linear(hidden_size, output_size))) {};
 
-  //how to define the architechture?
-  Linear layer1;
-  Linear layer2;
+  // Implement the Net's algorithm.
+  torch::Tensor forward(torch::Tensor x) {
+    // Use one of many tensor manipulation functions.
+    x = torch::relu(layer1->forward(x));
+    x = torch::dropout(x, /*p=*/0.5, /*train=*/true);
+    x = torch::sigmoid(layer2->forward(x));
+    return x;
+  }
+  Linear layer1{nullptr};
+  Linear layer2{nullptr};
 };
 
 int main()
@@ -46,9 +53,9 @@ int main()
   MyFirstNetwork n(10, 20, 5);
   auto inp = torch::randn({1, 10});
 
-  // how to train? 
-  n.eval();
-  n.train();
+  auto prediction = n.forward(inp);
+
+  std::cout << prediction << '\n';
 
 
   auto input = torch::randn({3, 5}, torch::requires_grad(true));
