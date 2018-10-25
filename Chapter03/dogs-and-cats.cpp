@@ -2,17 +2,20 @@
 
 #include <filesystem>
 
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <iostream>
+#include <iterator>
+#include <map>
 #include <random>
 #include <regex>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
 
 namespace fs = std::filesystem;
 
@@ -118,6 +121,65 @@ void clean_samples(const std::string& image_path)
   fs::remove_all(image_path+"/valid");
 }
 
+struct NoTransform {};
+template <typename Transform = NoTransform>
+class ImageFolder
+{
+public:
+  ImageFolder(std::string path, Transform t) : folder_path{path},
+                                             transform{t}
+  {
+    find_classes();
+  }
+  std::map<std::string, unsigned int> class_to_idx;
+  std::vector<std::string> classes;
+protected:
+  void find_classes()
+  {
+    auto files = list_files(folder_path, R"(.*\/*.jpg)");
+    std::transform(cbegin(files), cend(files), 
+                   std::back_inserter(classes),
+                   [](std::string fname)
+                   {
+                     auto t = string_split(string_split(fname,".")[0],"/");
+                     return t[t.size()-1];
+                   });
+    auto last = std::unique(begin(classes), end(classes));
+    classes.erase(last, end(classes));
+    for(size_t i=0; i<classes.size(); ++i)
+    {
+      class_to_idx[classes[i]] = i;
+    }
+
+  }
+  Transform transform;
+  std::string folder_path;
+};
+
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const std::vector<T>& v)
+{
+  os << "[ ";
+  auto before_last = --end(v);
+  for(auto it=begin(v); it!=before_last; ++it)
+    os << *it << ", ";
+  os << *before_last << " ]";
+  return os;
+}
+
+
+std::ostream& operator<<(std::ostream& os, 
+                         const std::map<std::string, unsigned int>& m)
+{
+  os << "{ ";
+  auto before_last = --end(m);
+  for(auto it=begin(m); it!=before_last; ++it)
+    os << (*it).first << " : " << (*it).second <<", ";
+  os << (*before_last).first << " : " << (*before_last).second <<" }";
+  return os;
+}
+
+
 int main()
 {
   const std::string image_path{"/home/inglada/stok/DATA/DogsAndCats/train"};
@@ -128,8 +190,11 @@ int main()
   generate_samples(files, training_samples, 
                    training_samples+validation_samples, "valid");
 
-  show_image(files[0]);
+  //  show_image(files[0]);
+  auto ImF = ImageFolder(image_path+"/train", NoTransform{});
 
+  std::cout << ImF.class_to_idx << '\n';
+  std::cout << ImF.classes << '\n';
   clean_samples(image_path);
   return 0;
 
