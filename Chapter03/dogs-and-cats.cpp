@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+#include <torch/script.h> // to load existing models
+
 namespace fs = std::filesystem;
 
 // Utility to list the files that match a pattern in a directory
@@ -280,7 +282,7 @@ std::ostream& operator<<(std::ostream& os,
 }
 
 
-int main()
+int main(int argc, char* argv[])
 {
   const std::string image_path{"/home/inglada/stok/DATA/DogsAndCats/train"};
   auto files = get_available_files_and_make_dirs(image_path);
@@ -299,9 +301,21 @@ int main()
   auto train_data_gen = DataLoader{train, true, 64};
   auto valid_data_gen = DataLoader{valid, true, 64};
 
+  // Deserialize the ScriptModule from a file using torch::jit::load().
+  //https://pytorch.org/tutorials/advanced/cpp_export.html
+  std::shared_ptr<torch::jit::script::Module> module = 
+    torch::jit::load(argv[1]);
+  assert(module != nullptr);
+  // Create a vector of inputs.
+  std::vector<torch::jit::IValue> inputs;
+  inputs.push_back(torch::ones({1, 3, 224, 224}));
+
+  // Execute the model and turn its output into a tensor.
+  auto output = module->forward(inputs).toTensor();
+
+  std::cout << output.slice(/*dim=*/1, /*start=*/0, /*end=*/5) << '\n';
 
   clean_samples(image_path);
-
   return 0;
 
 }
