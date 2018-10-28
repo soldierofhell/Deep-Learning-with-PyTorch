@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
 #include <algorithm>
@@ -19,7 +20,8 @@
 
 namespace fs = std::filesystem;
 
-std::vector<std::string> list_files(const std::string& dir, 
+// Utility to list the files that match a pattern in a directory
+std::vector<std::string> list_files(const std::string& dir,
                                     const std::string& pattern = ".*")
 {
   std::regex regex_pattern(pattern);
@@ -35,16 +37,15 @@ std::vector<std::string> list_files(const std::string& dir,
       result.emplace_back(clean_fname);
       }
     }
-
   return result;
 }
 
 // Splits a string using any of a list of separators
-std::vector<std::string> string_split(const std::string& str, 
+std::vector<std::string> string_split(const std::string& str,
                                const char* separators = "\t ")
-{  
+{
   std::vector< std::string > tokens;
-  boost::split(tokens, str, boost::is_any_of(separators), 
+  boost::split(tokens, str, boost::is_any_of(separators),
                boost::token_compress_on);
   return tokens;
 }
@@ -60,7 +61,9 @@ std::string string_join(const std::vector<std::string>& vos, char sep=' ')
   return ss.str();
 }
 
-std::vector<std::string> 
+//Gets the list of the available jpeg images and makes the directories
+//splitting train and valid and cats and dogs
+std::vector<std::string>
 get_available_files_and_make_dirs(const std::string& image_path)
 {
   auto files = list_files(image_path, R"(.*\/*.jpg)");
@@ -73,7 +76,7 @@ get_available_files_and_make_dirs(const std::string& image_path)
     for(const auto& folder : std::array<std::string,2>{"dog", "cat"})
     {
       const auto new_folder = image_path+"/"+t+"/"+folder;
-      if(fs::exists(new_folder)) 
+      if(fs::exists(new_folder))
       {
         std::cout << new_folder << " exists; removing\n";
         fs::remove_all(new_folder);
@@ -82,15 +85,18 @@ get_available_files_and_make_dirs(const std::string& image_path)
     }
   return files;
 }
-void generate_samples(const std::vector<std::string> files, int first, 
+
+//From a list fo files, gets 'count' samples starting from 'first' and puts them
+// in the selected subfolder
+void generate_samples(const std::vector<std::string> files, int first,
                       int count, std::string subfolder)
 {
   for(auto i=first; i<first+count; ++i)
   {
     auto f = files[i];
     auto tokens = string_split(f, "/");
-    auto image_path = string_join(std::vector<std::string>(tokens.begin(),        
-                                                           --tokens.end()), 
+    auto image_path = string_join(std::vector<std::string>(tokens.begin(),
+                                                           --tokens.end()),
                                   '/');
     auto f_name = tokens[tokens.size()-1];
     auto cat_or_dog = std::string(string_split(f_name,".")[0]);
@@ -99,29 +105,84 @@ void generate_samples(const std::vector<std::string> files, int first,
   }
 }
 
-void show_image(const std::string& im_fn)
+// Reads an image using OpenCV
+cv::Mat read_image(const std::string& im_fn)
 {
   cv::Mat image;
   image = cv::imread(im_fn, CV_LOAD_IMAGE_COLOR);
 
-  if(! image.data )                
+  if(! image.data )
   {
     throw("Could not open or find the image\n");
-    
+
   }
+  return image;
+}
+
+//Displays an OpenCV image
+void show_image(const cv::Mat& image)
+{
   cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE );
-  cv::imshow( "Display window", image ); 
-  cv::waitKey(0);                                  
+  cv::imshow( "Display window", image );
+  cv::waitKey(0);
   return;
 }
 
+//Displays a image given its file name
+void show_image_file(const std::string& im_fn)
+{
+  auto image = read_image(im_fn);
+  show_image(image);
+  return;
+}
+
+//Cleans the directory with the tranin and validation samples
 void clean_samples(const std::string& image_path)
 {
   fs::remove_all(image_path+"/train");
   fs::remove_all(image_path+"/valid");
 }
 
-struct NoTransform {};
+//Gets the name of the class from the file name
+std::string get_class_name(std::string fname)
+{
+  auto t = string_split(string_split(fname,".")[0],"/");
+  return t[t.size()-1];
+}
+
+//Identity transform for an image
+struct NoTransform {
+  cv::Mat operator()(const cv::Mat& im)
+  {
+    return im;
+  }
+};
+
+//Cats and Dogs transform which resizes to 224x224 and normalizes with hard
+//values as in the book example
+struct CDTransform {
+  cv::Mat operator()(const cv::Mat& im)
+  {
+    cv::Mat tmp;
+    cv::resize(im, tmp, cv::Size(224, 224), 0, 0, CV_INTER_LINEAR);
+    cv::Mat planes[3];
+    cv::split(tmp, planes);
+    std::array<float,3> slopes{0.485, 0.456, 0.406};
+    std::array<float,3> intercepts{0.229, 0.224, 0.225};
+    for(size_t i{0}; i<3; ++i)
+      planes[i] = planes[i]*slopes[i]-intercepts[i];
+    cv::Mat outImg;
+        cv::merge(planes, 3, outImg);
+    return outImg;
+  }
+};
+
+
+
+// This class gives acces to the image of a folder via a specific
+// transform The images are read and transformed when they are asked
+// for The given path is supposed to have one subfolder with the name
+// of each class containing the images for each class
 template <typename Transform = NoTransform>
 class ImageFolder
 {
@@ -131,19 +192,38 @@ public:
   {
     find_classes();
   }
+  //Access an image and its label by index in the folder
+  std::pair<cv::Mat, unsigned int> operator[](size_t idx)
+  {
+    const auto im_fn = files[idx];
+    const auto label = get_label(im_fn);
+    return {transform(read_image(im_fn)), label};
+  }
+  void shuffle()
+  {
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(files.begin(), files.end(), g);
+  }
+  size_t size() const { return files.size(); }
+  //Maps the class names to their label
   std::map<std::string, unsigned int> class_to_idx;
+  //The list of available classes
   std::vector<std::string> classes;
+  //The files containig the images
+  std::vector<std::string> files;
 protected:
+  unsigned int get_label(const std::string& im_fn)
+  {
+    return class_to_idx[get_class_name(im_fn)];
+  }
+
   void find_classes()
   {
-    auto files = list_files(folder_path, R"(.*\/*.jpg)");
-    std::transform(cbegin(files), cend(files), 
+    files = list_files(folder_path, R"(.*\/*.jpg)");
+    std::transform(cbegin(files), cend(files),
                    std::back_inserter(classes),
-                   [](std::string fname)
-                   {
-                     auto t = string_split(string_split(fname,".")[0],"/");
-                     return t[t.size()-1];
-                   });
+                   get_class_name);
     auto last = std::unique(begin(classes), end(classes));
     classes.erase(last, end(classes));
     for(size_t i=0; i<classes.size(); ++i)
@@ -156,6 +236,10 @@ protected:
   std::string folder_path;
 };
 
+//Syntactic sugar
+template <typename T>
+size_t len(T x) { return x.size(); };
+
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const std::vector<T>& v)
 {
@@ -167,8 +251,24 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& v)
   return os;
 }
 
+//Class providing batches of samples from a sample folder. Will have
+//to implement some kind of batch forwarding to the network, I guess
+template <typename SampleFolder>
+class DataLoader
+{
+public:
+  DataLoader(SampleFolder folder, bool shuffle = true, size_t batch_size = 64)
+    : dataset{folder}, do_shuffle{shuffle}, batch_size{batch_size} {};
 
-std::ostream& operator<<(std::ostream& os, 
+  SampleFolder& dataset;
+
+private:
+  bool do_shuffle = false;
+  size_t batch_size = 64;
+};
+
+
+std::ostream& operator<<(std::ostream& os,
                          const std::map<std::string, unsigned int>& m)
 {
   os << "{ ";
@@ -187,16 +287,21 @@ int main()
   const auto training_samples = 20;
   generate_samples(files, 0, training_samples, "train");
   const auto validation_samples = 20;
-  generate_samples(files, training_samples, 
+  generate_samples(files, training_samples,
                    training_samples+validation_samples, "valid");
+  auto train = ImageFolder(image_path+"/train", CDTransform{});
+  auto valid = ImageFolder(image_path+"/valid", CDTransform{});
+  std::cout << train.class_to_idx << '\n';
+  std::cout << train.classes << '\n';
+  auto [image_sample, sample_label] = train[training_samples/2];
+  std::cout << "The label of the image is " << sample_label << '\n';
+  show_image(image_sample);
+  auto train_data_gen = DataLoader{train, true, 64};
+  auto valid_data_gen = DataLoader{valid, true, 64};
 
-  //  show_image(files[0]);
-  auto ImF = ImageFolder(image_path+"/train", NoTransform{});
 
-  std::cout << ImF.class_to_idx << '\n';
-  std::cout << ImF.classes << '\n';
   clean_samples(image_path);
+
   return 0;
 
 }
-
