@@ -303,7 +303,7 @@ int main(int argc, char* argv[])
 
   // Deserialize the ScriptModule from a file using torch::jit::load().
   //https://pytorch.org/tutorials/advanced/cpp_export.html
-  std::shared_ptr<torch::jit::script::Module> module = 
+  torch::jit::script::Module module = 
     torch::jit::load(argv[1]);
   assert(module != nullptr);
   // Create a vector of inputs.
