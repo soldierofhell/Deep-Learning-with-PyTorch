@@ -305,13 +305,13 @@ int main(int argc, char* argv[])
   //https://pytorch.org/tutorials/advanced/cpp_export.html
   torch::jit::script::Module module = 
     torch::jit::load(argv[1]);
-  assert(module != nullptr);
+  //assert(module != nullptr);
   // Create a vector of inputs.
   std::vector<torch::jit::IValue> inputs;
   inputs.push_back(torch::ones({1, 3, 224, 224}));
 
   // Execute the model and turn its output into a tensor.
-  auto output = module->forward(inputs).toTensor();
+  auto output = module.forward(inputs).toTensor();
 
   std::cout << output.slice(/*dim=*/1, /*start=*/0, /*end=*/5) << '\n';
 
